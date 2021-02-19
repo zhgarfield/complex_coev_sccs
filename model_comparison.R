@@ -165,6 +165,9 @@ qgraph(cor_phy,
 
 dev.off()
 
+
+####### NOTE: EVERYTHING BELOW THIS IS A WIP!! ################################
+
 #008080,#70a494,#b4c8a,#f6edbd,#edbb8a,#de8a5a,#ca562c
 ###############################################################################
 ##### ELPD breakdown by region/subsistence mode ###############################
