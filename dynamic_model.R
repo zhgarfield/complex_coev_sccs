@@ -88,7 +88,7 @@ n_cores <- 8
 n_iter <- 1000
 
 mod <- stan_model(file="stan_models/mcoev_OU.stan")
-fit_mcoev <- sampling(mod, data=data_list, chains=n_chains, cores=n_cores, iter=n_iter, init="0")
+fit_mcoev <- sampling(mod, data=data_list, chains=n_chains, cores=n_cores, iter=n_iter, init="0", control=list(adapt_delta = 0.99))
 
 #saveRDS(fit_mcoev, "fit_mcoev.rds")
 #fit_mcoev <- readRDS("fit_mcoev.rds")
