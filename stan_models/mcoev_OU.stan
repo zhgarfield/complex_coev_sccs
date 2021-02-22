@@ -75,7 +75,8 @@ for (n in 1:2) {
   
   for (n in 1:2) {
   // adding gaussian noise, scaled by expected sd of the OU model
-  z[node_seq[i],2,n] = z[node_seq[i],2,n] + z_drift[i-1,n]*sigma[n]*ts[i,2];
+  real X_SD = sqrt( (square(sigma[n])/(2*alpha[n])) * (1 - exp(-2*alpha[n]*ts[i,2])) );
+  z[node_seq[i],2,n] = z[node_seq[i],2,n] + z_drift[i-1,n]*X_SD;
   }
 
 }
