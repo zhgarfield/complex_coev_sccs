@@ -9,9 +9,9 @@ functions {
     real y2 = z[2];
     
     // System of differential equations
-    real dy1_dt = theta[13]*(theta[1] + theta[2]*y1 + theta[3]*square(y1) + theta[4]*y2 + theta[5]*square(y2) + theta[6]*y1*y2 - y1);
+    real dy1_dt = theta[13]*(theta[13]*(theta[1] + theta[2]*(y1 - theta[1]) + theta[3]*square(y1 - y1 - theta[1]) + theta[4]*(y2 - theta[7]) + theta[5]*square(y2 - theta[7]) + theta[6]*(y1 - theta[1])*(y2 - theta[7]) - y1));
     
-    real dy2_dt = theta[14]*(theta[7] + theta[8]*y2 + theta[9]*square(y2) + theta[10]*y1 + theta[11]*square(y1) + theta[12]*y1*y2 - y2);
+    real dy2_dt = theta[14]*(theta[7] + theta[8]*(y2 - theta[7]) + theta[9]*square(y2 - theta[7]) + theta[10]*(y1 - theta[1]) + theta[11]*square(y1 - theta[1]) + theta[12]*(y1 - theta[1])*(y2 - theta[7]) - y2);
     
     return { dy1_dt, dy2_dt };
   }
