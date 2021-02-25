@@ -33,6 +33,7 @@ parent_time[1] <- -99
 for (i in 2:length(parent_time)) parent_time[i] <- (node.depth.edgelength(tree)[node_seq[i]] - node.depth.edgelength(tree)[parent[i]]) / max(node.depth.edgelength(tree))
 
 N_seg <- length(node_seq)
+
 #######################
 #### Organizing data ##
 storage <- ifelse(d$v20 > 1, 1, 0) # dichtomizing food storage
@@ -55,14 +56,14 @@ y <- cbind(d$v151, d$v150, d$v156, d$v152, d$v149, d$v153, d$v154, d$v155, d$v15
 prior_y <- matrix(NA, nrow = 10, ncol = K-1)
 
 for (j in 1:(J-2)) {
-  cumu_logit <- logit( cumsum( table(y[,j]) ) / length(y[,j][y[,j] >= 0]) )
+  cumu_logit <- rethinking::logit( cumsum( table(y[,j]) ) / length(y[,j][y[,j] >= 0]) )
   
   prior_y[j,] <- cumu_logit[-K] # omitting the last category, which is always +Inf
 }
 
-prior_storage <- logit( mean(storage[storage >= 0]))
+prior_storage <- rethinking::logit( mean(storage[storage >= 0]))
 
-prior_hunting <- (logit( cumsum( table(hunting_rev) ) / length(hunting_rev[hunting_rev >= 0]) ))[-K_hunt]
+prior_hunting <- (rethinking::logit( cumsum( table(hunting_rev) ) / length(hunting_rev[hunting_rev >= 0]) ))[-K_hunt]
 
 ## Organize data into a list for Stan
 data_list <- list(
@@ -71,7 +72,7 @@ data_list <- list(
   N_seg = N_seg,
   node_seq = node_seq,
   parent = parent,
-  ts = cbind(0.0001, parent_time),
+  ts = parent_time,
   date = times[order(node_time)],
   y = y,
   hunting = hunting_rev,
@@ -85,16 +86,16 @@ data_list <- list(
 
 n_chains <- 8
 n_cores <- 8
-n_iter <- 1000
+n_iter <- 500
 
 mod <- stan_model(file="stan_models/mcoev_OU.stan")
-fit_mcoev <- sampling(mod, data=data_list, chains=n_chains, cores=n_cores, iter=n_iter, init="0", control=list(adapt_delta = 0.99))
+
+fit_mcoev <- sampling(mod, data=data_list, chains=n_chains, cores=n_cores, iter=n_iter, init="0", control=list(adapt_delta=0.9))
 
 #saveRDS(fit_mcoev, "fit_mcoev.rds")
 #fit_mcoev <- readRDS("fit_mcoev.rds")
 
 post <- extract.samples(fit_mcoev)
-
 ###################################
 ##### Scatter plot of posterior median trait values for sample societies
 svg("coev_scatter.svg", width=6, height=6, pointsize=12)
