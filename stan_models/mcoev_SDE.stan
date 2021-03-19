@@ -110,9 +110,9 @@ vector[J] lambda; // factor loadings
 
 lambda = to_vector( append_col(1, to_row_vector(loadings)) );
 
-// selection matrix, col 1 is RI, col 2 is TPC
-A[1,1] = alpha_auto[1]; // autoregressive effect of RI on itself
-A[2,2] = alpha_auto[2]; // autoregressive effect of TPC on itself
+// selection matrix, col 1 is RI, col 2 is TSD
+A[1,1] = -exp(alpha_auto[1]); // autoregressive effect of RI on itself
+A[2,2] = -exp(alpha_auto[2]); // autoregressive effect of TSD on itself
 
 A[2,1] = alpha_cross[1];
 A[1,2] = alpha_cross[2];
@@ -125,7 +125,7 @@ I = diag_matrix(rep_vector(1,2));
 
 // setting ancestral states
 eta[node_seq[1],1] = eta_anc[1]; // RI ancestral state
-eta[node_seq[1],2] = eta_anc[2]; // TPC ancesrtal state
+eta[node_seq[1],2] = eta_anc[2]; // TSD ancesrtal state
 
   for (i in 2:N_seg) {
   matrix[2,2] A_delta; // amount of deterministic change ("selection")
@@ -135,7 +135,7 @@ eta[node_seq[1],2] = eta_anc[2]; // TPC ancesrtal state
   A_delta = A_dt(A, ts[i]);
   VCV = cov_drift(A, Q, ts[i]);
   
-  // No drift on the interaction, bc its simply a product of RI and TPC
+  // No drift on the interaction, bc its simply a product of RI and TSD
   drift_seg = cholesky_decompose(VCV) * to_vector( z_drift[i-1,] );
   
   eta[node_seq[i],] = to_row_vector(
@@ -164,7 +164,7 @@ model{
   for (j in 1:J-2) {
     // RI variables
     if (j <= 4) y[i,j] ~ ordered_logistic( eta[i,1]*lambda[j], c[j,] );
-    // TPC variables
+    // TSD variables
     else y[i,j] ~ ordered_logistic( eta[i,2]*lambda[j], c[j,] );
   }
   // Hunting and food storage
