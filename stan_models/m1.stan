@@ -58,11 +58,11 @@ transformed parameters{
 
 model{
 for (j in 1:J-2) {
-c[j,] ~ normal(0,1);
+c[j,] ~ normal(0,2);
 }
-c_hunt ~ normal(0,1);
-a_storage ~ normal(0,1);
-b_agr ~ normal(0,1);
+c_hunt ~ normal(0,2);
+a_storage ~ normal(0,2);
+b_agr ~ std_normal();
 for (j in 1:J-1) {
 scale_agr[j,] ~ dirichlet(rep_vector(2,K-1));
 }

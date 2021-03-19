@@ -39,12 +39,12 @@ transformed parameters{
 
 model{
 for (j in 1:J-2) {
-c[j,] ~ normal(0,1);
+c[j,] ~ normal(0,2);
 }
-c_hunt ~ normal(0,1);
-a_storage ~ normal(0,1);
+c_hunt ~ normal(0,2);
+a_storage ~ normal(0,2);
 
-to_vector(phy_z) ~ normal(0,1);
+to_vector(phy_z) ~ std_normal();
 rho ~ exponential(1);
 eta ~ exponential(1);
 
