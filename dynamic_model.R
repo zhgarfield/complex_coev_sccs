@@ -21,18 +21,21 @@ nodelabels(text=1:tree$Nnode,node=1:tree$Nnode+Ntip(tree))
 
 times <- node.depth.edgelength(tree) # date of each node, measured in thousands of years
 
+# Line up date of each node with the split points in the tree
 split_points <- sort(unique(times))
 node_time <- match(times, split_points)
 
+# Create a sequence of nodes, respecting temporal order
 node_seq <- seq(from=1, to=length(node_time))
 node_seq <- node_seq[order(node_time)]
 parent <- Ancestors(tree, node_seq, type="parent") 
 
+# Parent time indicates amount of time since the parent node, scaled by the total depth of the tree
 parent_time <- rep(NA, length(node_seq))
 parent_time[1] <- -99
 for (i in 2:length(parent_time)) parent_time[i] <- (node.depth.edgelength(tree)[node_seq[i]] - node.depth.edgelength(tree)[parent[i]]) / max(node.depth.edgelength(tree))
 
-N_seg <- length(node_seq)
+N_seg <- length(node_seq)  # total num segments in the tree\
 
 #######################
 #### Organizing data ##
@@ -52,19 +55,6 @@ hunting_rev <- as.numeric( as.character(hunting_rev) )
 
 y <- cbind(d$v151, d$v150, d$v156, d$v152, d$v149, d$v153, d$v154, d$v155, d$v157, d$v158) # all the Murdock complexity variables
 
-#### Center priors for observed variables based on their sample means #############
-prior_y <- matrix(NA, nrow = 10, ncol = K-1)
-
-for (j in 1:(J-2)) {
-  cumu_logit <- rethinking::logit( cumsum( table(y[,j]) ) / length(y[,j][y[,j] >= 0]) )
-  
-  prior_y[j,] <- cumu_logit[-K] # omitting the last category, which is always +Inf
-}
-
-prior_storage <- rethinking::logit( mean(storage[storage >= 0]))
-
-prior_hunting <- (rethinking::logit( cumsum( table(hunting_rev) ) / length(hunting_rev[hunting_rev >= 0]) ))[-K_hunt]
-
 ## Organize data into a list for Stan
 data_list <- list(
   N = N,
@@ -73,77 +63,68 @@ data_list <- list(
   node_seq = node_seq,
   parent = parent,
   ts = parent_time,
-  date = times[order(node_time)],
   y = y,
   hunting = hunting_rev,
   storage = storage,
   K = max(d$v151),
-  K_hunt = K_hunt,
-  prior_y = prior_y,
-  prior_storage = prior_storage,
-  prior_hunting = prior_hunting
+  K_hunt = K_hunt
 )
 
-n_chains <- 8
-n_cores <- 8
-n_iter <- 500
+mod <- stan_model("stan_models/mcoev_SDE.stan")
 
-mod <- stan_model(file="stan_models/mcoev_OU.stan")
-
-fit_mcoev <- sampling(mod, data=data_list, chains=n_chains, cores=n_cores, iter=n_iter, init="0", control=list(adapt_delta=0.9))
+fit <- sampling(mod, data=data_list, iter=500, init="0", chains=10, cores=10)
 
 #saveRDS(fit_mcoev, "fit_mcoev.rds")
 #fit_mcoev <- readRDS("fit_mcoev.rds")
 
-post <- extract.samples(fit_mcoev)
-###################################
-##### Scatter plot of posterior median trait values for sample societies
-svg("coev_scatter.svg", width=6, height=6, pointsize=12)
-par(cex=1.5, pty="s")
+post <- extract.samples(fit)
 
-plot( scale(apply(post$z[,1:data_list$N,2,2], 2, median)) ~ scale(apply(post$z[,1:data_list$N,2,1], 2, median)), pch=16, col=col.alpha("black",0.6),xlab="RI (z-score)", ylab="TPC (z-score)")
-points( scale(apply(post$z[,1:data_list$N,2,2], 2, median)) ~ scale(apply(post$z[,1:data_list$N,2,1], 2, median)), col="black")
+##### Scatter plot of posterior median trait values for sample societies
+#svg("coev_scatter.svg", width=6, height=6, pointsize=12)
+#par(cex=1.5, pty="s")
+
+plot( scale(post_eta_median$TPC) ~ scale(post_eta_median$RI), pch=16, col=col.alpha("black",0.6),xlab="RI (z-score)", ylab="TPC (z-score)")
+points( scale(post_eta_median$TPC) ~ scale(post_eta_median$RI), col="black")
 
 dev.off()
 
 #### Get parameter values and distribution of latent variables among study societes ###
-theta_med <- apply(post$theta, 2, median) # posterior median parameter values for OU model
+mean_RI <- mean(post_eta_median$RI)
+mean_TPC <- mean(post_eta_median$TPC)
 
-mean_RI <- mean(apply(post$z[,1:data_list$N,2,1], 2, median))
-mean_TPC <- mean(apply(post$z[,1:data_list$N,2,2], 2, median))
-
-sd_RI <- median(apply(post$z[,1:data_list$N,2,1], 1, sd))
-sd_TPC <- median(apply(post$z[,1:data_list$N,2,2], 1, sd))
+sd_RI <- sd(post_eta_median$RI)
+sd_TPC <- sd(post_eta_median$TPC)
 
 low_RI <- mean_RI - sd_RI*2 # -2SD
-high_RI <- mean_RI + sd_RI*2 # + 2SD
+high_RI <- mean_RI + sd_RI*2# + 2SD
 
 low_TPC <- mean_TPC - sd_TPC*2 # -2SD
 high_TPC <- mean_TPC + sd_TPC*2 # + 2SD
 
+A <- matrix( apply( cbind(post$`A[1,1]`,post$`A[1,2]`, post$`A[2,1]`,post$`A[2,2]`), 2, median),
+                    nrow = 2, ncol = 2, byrow = T) 
+
+b <- c( median(post$`b0[1]`), median(post$`b0[2]`) )
+
 ##### Flow field diagram ################################
 OU <- function(t, y, parameters) {
-  y1 <- y[1]
-  y2 <- y[2]
-  
-  theta <- c()
-  for (t in 1:length(parameters)) theta[t] <- parameters[t]
-  
+
+  parms <- parameters
   dy <- numeric(2)
-  dy[1] <- (theta[13]*(theta[1] + theta[2]*y1 + theta[3]*y1 + theta[4]*y2 + theta[5]*y2^2 + theta[6]*y1*y2 - y1))
-  dy[2] <- (theta[14]*(theta[7] + theta[8]*y2 + theta[9]*y2 + theta[10]*y1 + theta[11]*y1^2 + theta[12]*y1*y2 - y2))
+  dy[1] <- y[1]*A[1,1] + y[2]*A[2,1] + b[1]
+  dy[2] <- y[2]*A[2,2] + y[1]*A[1,2] + b[2]
   
   list(dy)
 }
 
-svg("phaseplane.svg", width=6, height=6, pointsize=12)
-par(cex=1.5, pty="s")
+#svg("phaseplane.svg", width=6, height=6, pointsize=12)
+#par(cex=1.5, pty="s")
 
 ## Plot phase plane
-OU.flowField <- flowField(OU, xlim = c(low_RI, high_RI), ylim = c(low_TPC, high_TPC), parameters=apply(post$theta, 2, median), add = FALSE, xlab="RI (z-score)", ylab="TPC (z-score)", axes=T, arrow.type="proportional", col="black", bg="black", frac=1.1, xaxt='n', yaxt='n', xaxs="i", yaxs='i', points=10)
+OU.flowField <- flowField(OU, xlim = c(low_RI, high_RI), ylim = c(low_TPC, high_TPC), parameters = NA, add = FALSE, xlab="RI (z-score)", ylab="TPC (z-score)", points=20, col="cornflowerblue")
 
 ## Add nullclines to phase plane
-nullclines(OU, xlim =  c(low_RI, high_RI), ylim = c(low_TPC, high_TPC), apply(post$theta, 2, median), xlab="Resource Use Intensification", ylab="Techno-political Complexity", points=30, axes=F, col=c( "skyblue", "slategray"), add.legend=F, lwd=3)
+nullclines(OU, xlim =  c(low_RI, high_RI), ylim = c(low_TPC, high_TPC), parameters = NA, xlab="Resource Use Intensification", ylab="Techno-political Complexity", points=10, axes=F, col=c( "skyblue", "slategray"), add.legend=F, lwd=3)
 
 # Add axes
 axis(1, at=c(low_RI, mean_RI, high_RI), labels=(c(low_RI, mean_RI,high_RI)-mean_RI)/sd_RI)
@@ -156,9 +137,9 @@ dev.off()
 OU_ode <- function( time, y, parms ) {
   with(as.list(c(y,parms)), {
     
-    dy1 <- parms[13]*(parms[1] + parms[2]*y[1] + parms[3]*y[1]^2 + parms[4]*y[2] + parms[5]*y[2]^2 + parms[6]*y[1]*y[2] - y[1])
+    dy1 <- 
     
-    dy2 <- parms[14]*(parms[7] + parms[8]*y[2] + parms[9]*y[2]^2 + parms[10]*y[1] + parms[11]*y[1]^2 + parms[12]*y[1]*y[2] - y[2])
+    dy2 <- 
     
     list(c(dy1,dy2))
   })
@@ -286,234 +267,3 @@ dTPC / dRI
 ggsave(filename = "fig3.pdf", width = 6, height = 5, dpi=600)
 
 #############################################################
-##### EVERTTHING BELOW THIS IS A WIP!! ######################
-
-#### R^2 plots ###########################
-r2 <- matrix(NA, nrow = n_samps, ncol = J)
-
-for (j in 1:(J-2)) {
-  
-  if (j == 1) r2[,j] <- apply(post$z[,1:data_list$N,2,1], 1, var) / (apply(post$z[,1:data_list$N,2,1], 1, var) + pi^2/3)
-  
-  else if (j <= 4) r2[,j] <- apply(post$z[,1:data_list$N,2,1]*post$lambda[,j-1], 1, var) / (apply(post$z[,1:data_list$N,2,1]*post$lambda[,j-1], 1, var) + pi^2/3)
-  
-  else r2[,j] <- apply(post$z[,1:data_list$N,2,2]*post$lambda[,j-1], 1, var) / (apply(post$z[,1:data_list$N,2,2]*post$lambda[,j-1], 1, var) + pi^2/3)
-}
-
-r2[,J-1] <- apply(post$z[,1:data_list$N,2,1]*post$lambda[,J-2], 1, var) / (apply(post$z[,1:data_list$N,2,1]*post$lambda[,J-2], 1, var) + pi^2/3)
-r2[,J] <- apply(post$z[,1:data_list$N,2,1]*post$lambda[,J-1], 1, var) / (apply(post$z[,1:data_list$N,2,1]*post$lambda[,J-1], 1, var) + pi^2/3)
-
-r2 <- as.data.frame(r2)
-names(r2) <- c("Agriculture", "Fixity of Residence", "Density of Population", "Urbanization", "Writing & Records", "Tech. Specialization", "Land Transportation", "Money", "Political Integration", "Social Stratification")
-
-r2$samp_id <- 1:n_samps
-
-r2_long <- r2 %>% pivot_longer(-samp_id)
-##############################################
-
-##### Counterfactual plots for latent vars ###
-n_samps <- length(post$lp__)
-
-# add posterior estimates
-post_c <- array( post$c, dim=c(n_samps, 10, 4), dimnames = list(post = 1:n_samps, var = c("Agriculture", "Fixity of Residence", "Density of Population", "Urbanization", "Writing and Records", "Technological Specialization", "Land Transport", "Money", "Political Integration", "Social Stratification"),cutpoint = as.character(1:4)))
-
-# reshape
-post_long <- post_c %>% as.tbl_cube(met_name = "est") %>% as_tibble()
-post_long$cutpoint <- as.character(post_long$cutpoint)
-
-# add the final cutpoint, with log-odds of +Inf
-post_5 <- post_long %>% filter(cutpoint == "1")
-post_5$cutpoint <- "5"
-post_5$est <- Inf
-
-post_long <- bind_rows(post_long, post_5)
-
-# get latent factor loadings
-lambda <- as.data.frame( cbind(rep(1, n_samps), post$lambda[,1:9]) )
-colnames(lambda) <- c("Agriculture", "Fixity of Residence", "Density of Population", "Urbanization", "Writing and Records", "Technological Specialization", "Land Transport", "Money", "Political Integration", "Social Stratification")
-lambda$post <- 1:n_samps
-
-lambda_long <- lambda %>% pivot_longer(-post, names_to = "var", values_to="lambda")
-
-# Combine cutpoints with lambdas
-cut_lam <- left_join(post_long, lambda_long, by=c("post", "var"))
-
-# Create prediction sequence
-cut_lam <- cut_lam %>% slice(rep(1:n(), each = 20)) # repeat the data frame 20 times
-cut_lam$pred_seq <- rep(seq(from=0, to=5, length.out=20), times=nrow(cut_lam)/20) # populate latent factor values
-
-cut_lam$cum_prob <- inv_logit( cut_lam$est - cut_lam$lambda*cut_lam$pred_seq ) # cumulative probability
-
-cut_lam2 <- cut_lam %>% group_by(post, var, pred_seq) %>% arrange(cutpoint) %>% mutate(prob = cum_prob - lag(cum_prob, n=1, default=0)) # convert from cumulative prob to prob by substracting the previous cutpoint cumulative prob
-
-# Now summarise with median and HPDI
-cut_lam_sum <- cut_lam2 %>% group_by(var, cutpoint, pred_seq) %>% summarise(med = median(prob),
-                                                                            lower1=HPDI(prob,0.96/4)[1],
-                                                                            upper1=HPDI(prob,0.96/4)[2],
-                                                                            lower2=HPDI(prob,(0.96/4)*2)[1],
-                                                                            upper2=HPDI(prob,(0.96/4)*2)[2],
-                                                                            lower3=HPDI(prob,(0.96/4)*3)[1],
-                                                                            upper3=HPDI(prob,(0.96/4)*3)[2],
-                                                                            lower4=HPDI(prob,0.96)[1],
-                                                                            upper4=HPDI(prob,0.96)[2])
-
-cut_lam_sum$group <- ifelse(cut_lam_sum$var %in% c("Agriculture", "Fixity of Residence", "Density of Population", "Urbanization"), "Resource Intensification", "Techno-political Complexity")
-
-svg( file="dynamic_cutpoints.svg", width=9, height=8, pointsize=12 )
-
-ggplot(cut_lam_sum, aes(x=pred_seq, y=med, color=cutpoint, fill=cutpoint)) + 
-  facet_wrap(group ~ var, scales="free_x") + 
-  geom_line() + 
-  geom_ribbon(aes(ymin=lower4, ymax=upper4), alpha=0.1, color=NA) +
-  geom_ribbon(aes(ymin=lower3, ymax=upper3), alpha=0.1, color=NA) +
-  geom_ribbon(aes(ymin=lower2, ymax=upper2), alpha=0.1, color=NA) +
-  geom_ribbon(aes(ymin=lower1, ymax=upper1), alpha=0.1, color=NA) + 
-  scale_fill_viridis_d() + 
-  scale_color_viridis_d() + 
-  theme_bw() + 
-  xlab("Latent Factor Score") + 
-  ylab("Probability") + 
-  theme(strip.background =element_rect(fill="white"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + labs(fill = "Ordinal Value", color= "Ordinal Value")
-
-dev.off()
-
-########################################
-##### Hunting prediction ###############
-lam_hunt <- data.frame(
-  lam = post$lambda[,10],
-  samp = 1:length(post$lp__)
-)
-
-c_hunt <- as.data.frame(post$c_hunt)
-names(c_hunt) <- 1:ncol(c_hunt)
-c_hunt$"10" <- Inf
-c_hunt$samp <- 1:nrow(c_hunt)
-
-c_hunt_long <- c_hunt %>% pivot_longer(-samp)
-hunt_long <- left_join(c_hunt_long, lam_hunt)
-
-hunt_long$name <- as.numeric(hunt_long$name) - 1
-
-# Create prediction sequence
-hunt_long <- hunt_long %>% slice(rep(1:n(), each = 20)) # repeat the data frame 20 times
-hunt_long$pred_seq <- rep(seq(from=0, to=5, length.out=20), times=nrow(hunt_long)/20) # populate latent factor values
-
-hunt_long$cum_prob <- inv_logit( hunt_long$value - hunt_long$lam*hunt_long$pred_seq ) # cumulative probability
-
-hunt_long2 <- hunt_long %>% group_by(samp, pred_seq) %>% arrange(name) %>% mutate(prob = cum_prob - lag(cum_prob, n=1, default=0)) # convert from cumulative prob to prob by substracting the previous cutpoint cumulative prob
-
-# Now summarise with median and HPDI
-hunt_long_sum <- hunt_long2 %>% group_by(name, pred_seq) %>% summarise(med = median(prob),
-                                                                            lower1=HPDI(prob,0.96/4)[1],
-                                                                            upper1=HPDI(prob,0.96/4)[2],
-                                                                            lower2=HPDI(prob,(0.96/4)*2)[1],
-                                                                            upper2=HPDI(prob,(0.96/4)*2)[2],
-                                                                            lower3=HPDI(prob,(0.96/4)*3)[1],
-                                                                            upper3=HPDI(prob,(0.96/4)*3)[2],
-                                                                            lower4=HPDI(prob,0.96)[1],
-                                                                            upper4=HPDI(prob,0.96)[2])
-
-
-hunt_long_sum$hunting <- factor(hunt_long_sum$name, labels=c("86-100%","76-85%","66-75%","56-65%","46-55%","36-45%","26-35%","16-25%","6-15%","0-5%"))
-#levels(hunt_long_sum$hunting) <- rev(levels(hunt_long_sum$hunting))
-
-ggplot(hunt_long_sum, aes(x=pred_seq, y=med, color=hunting, fill=hunting)) + 
-  geom_line() + 
-  geom_ribbon(aes(ymin=lower4, ymax=upper4), alpha=0.1, color=NA) +
-  geom_ribbon(aes(ymin=lower3, ymax=upper3), alpha=0.1, color=NA) +
-  geom_ribbon(aes(ymin=lower2, ymax=upper2), alpha=0.1, color=NA) +
-  geom_ribbon(aes(ymin=lower1, ymax=upper1), alpha=0.1, color=NA) + 
-  scale_fill_viridis_d() + 
-  scale_color_viridis_d() + 
-  theme_bw() + 
-  xlab("Resource-Use Intensification") + 
-  ylab("Probability") + 
-  theme(strip.background =element_rect(fill="white"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + labs(fill = "% Dependence on Hunting", color= "% Dependence on Hunting")
-
-########################################
-##### Food storage pred ################
-lam_fs <- data.frame(
-  lam = post$lambda[,11],
-  alpha = post$a_storage,
-  samp = 1:length(post$lp__)
-)
-
-fs_long <- lam_fs %>% slice(rep(1:n(), each = 20)) # repeat the data frame 20 times
-fs_long$pred_seq <- rep(seq(from=0, to=5, length.out=20), times=nrow(fs_long)/20) # populate latent factor values
-
-fs_long$prob <- inv_logit( fs_long$alpha + fs_long$lam*fs_long$pred_seq )
-
-# Now summarise with median and HPDI
-fs_long_sum <- fs_long %>% group_by(pred_seq) %>% summarise(med = median(prob),
-                                                                       lower1=HPDI(prob,0.96/4)[1],
-                                                                       upper1=HPDI(prob,0.96/4)[2],
-                                                                       lower2=HPDI(prob,(0.96/4)*2)[1],
-                                                                       upper2=HPDI(prob,(0.96/4)*2)[2],
-                                                                       lower3=HPDI(prob,(0.96/4)*3)[1],
-                                                                       upper3=HPDI(prob,(0.96/4)*3)[2],
-                                                                       lower4=HPDI(prob,0.96)[1],
-                                                                       upper4=HPDI(prob,0.96)[2])
-
-
-
-ggplot(fs_long_sum, aes(x=pred_seq, y=med)) + 
-  geom_line(color="#00A08A") + 
-  geom_ribbon(aes(ymin=lower4, ymax=upper4), alpha=0.1, color=NA, fill="#00A08A") +
-  geom_ribbon(aes(ymin=lower3, ymax=upper3), alpha=0.1, color=NA, fill="#00A08A") +
-  geom_ribbon(aes(ymin=lower2, ymax=upper2), alpha=0.1, color=NA, fill="#00A08A") +
-  geom_ribbon(aes(ymin=lower1, ymax=upper1), alpha=0.1, color=NA, fill="#00A08A") + 
-  scale_fill_viridis_d() + 
-  scale_color_viridis_d() + 
-  theme_bw() + 
-  xlab("Resource-Use Intensification") + 
-  ylab("Pr (Food Storage)") + 
-  theme(strip.background =element_rect(fill="white"), panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-
-
-##################################################
-##### Distribution of latent vars ################
-
-latent_df <- data.frame(
-  est = c(apply(post$z[,1:N,2,1], 2, median), apply(post$z[,1:N,2,2], 2, median)),
-  factor = rep(c("Resource-Use Intensification", "Technopolitical Complexity"), each=N)
-)
-
-ggplot(latent_df, aes(x=est)) + geom_density(aes(fill=factor),color=NA, alpha=0.6) + theme_bw(base_size=15) + xlab("Latent Factor Values") + ylab("") + scale_fill_manual(values=c("skyblue","slategray")) + scale_y_continuous(expand=c(0,0)) + theme(axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(), legend.title = element_blank())
-
-
-##################################################
-##### Alpha/sigma plot ###########################
-
-alpha_sig <- data.frame(
-  ratio = c(post$alpha[,1]/post$sigma[,1], post$alpha[,2]/post$sigma[,2]),
-  factor = rep(c("Resource-Use Intensification", "Technopolitical Complexity"), each=n_samps)
-)
-
-ggplot(alpha_sig, aes(x=ratio)) + geom_density(aes(fill=factor),color=NA) + theme_bw(base_size=15) + xlab(expression(alpha/sigma)) + ylab("") + scale_fill_manual(values=c("skyblue","slategray")) + scale_y_continuous(expand=c(0,0)) + theme(axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(), legend.title = element_blank())
-
-
-##########################################
-#### Generate table for manuscript #######
-par_names <- c("$\\theta_{[\\textrm{RI},\\textrm{RI}]}^1$", "$\\theta_{[\\textrm{RI},\\textrm{RI}]}^2$", "$\\theta_{[\\textrm{RI},\\textrm{TPC}]}^1$", "$\\theta_{[RI,TPC]}^2$", "$\\theta_{[\\textrm{RI},\\textrm{RI*TPC}]}$",
-               "$\\theta_{[\\textrm{TPC},\\textrm{TPC}]}^1$", "$\\theta_{[\\textrm{TPC},\\textrm{TPC}]}^2$", "$\\theta_{[\\textrm{TPC},\\textrm{RI}]}^1$", "$\\theta_{[\\textrm{TPC},\\textrm{RI}]}^2$", "$\\theta_{[\\textrm{TPC},\\textrm{TPC*RI}]}$",
-               "$\\alpha_{[\\textrm{RI}]}$", "$\\alpha_{[\\textrm{TPC}]}$",
-               "$\\sigma_{[\\textrm{RI}]}$", "$\\sigma_{[\\textrm{TPC}]}$")
-
-median_values <- c( apply(post$theta, 2, median), median(post$sigma[,1]), median(post$sigma[,2]) )
-SE_values <- c( apply(post$theta, 2, sd), sd(post$sigma[,1]), sd(post$sigma[,2]) )
-lower <- round( c( apply(post$theta, 2, HPDI, 0.9)[1,], HPDI(post$sigma[,1], 0.9)[1], HPDI(post$sigma[,2], 0.9)[1] ), 2)
-upper <- round( c( apply(post$theta, 2, HPDI, 0.9)[2,], HPDI(post$sigma[,1], 0.9)[2], HPDI(post$sigma[,2], 0.9)[2] ), 2)
-
-table_df <- data.frame(
-  Parameter = par_names,
-  Median = median_values,
-  SE = SE_values,
-  HPDI = paste0( paste0( paste0("[",lower), paste0("," ,upper) ), "]" ) 
-)
-
-names(table_df)[4] <- "HPDI (90%)"
-
-## This codes gets plugged into markdown document
-library(xtable)
-print(xtable(table_df), sanitize.text.function = identity, include.rownames = F, sanitize.colnames.function = NULL)
-
