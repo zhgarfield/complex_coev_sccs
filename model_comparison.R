@@ -132,7 +132,7 @@ svg("elpd_diff.svg", width=10, height=7, pointsize=12)
 
 diff1 <- ggplot(elpd_df, aes(x=as.numeric(elpd_diff), y=model)) + geom_point(size=4) + geom_errorbarh(aes(xmin=elpd_diff - se_diff*2, xmax=elpd_diff + se_diff*2), height=0, lwd=2) + geom_vline(aes(xintercept=0), linetype="dashed") + ylab("") + xlab(expression(paste(Delta, "(ELPD - MS ELPD)"))) + ggtitle("Model Performance") + theme_bw(base_size=24) + theme(panel.grid.minor = element_blank())
 
-diff2 <- ggplot(elpd_df2, aes(x=as.numeric(elpd_diff), y=model)) + geom_point(size=4) + geom_errorbarh(aes(xmin=elpd_diff - se_diff*2, xmax=elpd_diff + se_diff*2), height=0, lwd=2) + geom_vline(aes(xintercept=0), linetype="dashed") + ylab("") + xlab(expression(paste(Delta, "(M3 ELPD - M2 ELPD)"))) + ggtitle("") + theme_bw(base_size=24) + theme(panel.grid.minor = element_blank(), axis.ticks.y = element_blank(), axis.text.y = element_blank())
+diff2 <- ggplot(elpd_df2, aes(x=as.numeric(elpd_diff), y=model)) + geom_point(size=4) + geom_errorbarh(aes(xmin=elpd_diff - se_diff*2, xmax=elpd_diff + se_diff*2), height=0, lwd=2) + geom_vline(aes(xintercept=0), linetype="dashed") + ylab("") + xlab(expression(paste(Delta, "(M3 ELPD - M2 ELPD)"))) + ggtitle("") + theme_bw(base_size=24) + theme(panel.grid.minor = element_blank(), axis.ticks.y = element_blank(), axis.text.y = element_blank()) + scale_x_continuous(limits=c(-15,120))
 
 diff1 + diff2
 

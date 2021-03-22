@@ -87,7 +87,7 @@ data{
 
 parameters{
 // selection coefficients (2 for auto-regressive, 2 for cross-effects)
-vector<upper=0>[2] alpha_auto; // <0, assumes mean reverting process
+vector[2] alpha_auto; // <0, assumes mean reverting process
 vector[2] alpha_cross; 
 
 vector<lower=0>[2] sigma; // drift scale
