@@ -1,7 +1,5 @@
 # complex_coev_sccs
 
-:rotating_light::rotating_light::rotating_light: NOTE: Erik has broken this code repo temporarily and is working on getting the models set up using CmdStanR rather than RStan. He will remove this warning when the code is no longer on fire. :rotating_light::rotating_light::rotating_light:
-
 This repo contains data and code to reproduce the analyses and figures in Ringen, Martin, and Jaeggi (in prep) *Novel phylogenetic methods reveal that resource-use intensification
 drives the evolution of “complex” societies.*
 
