@@ -164,7 +164,27 @@ qgraph(cor_phy,
        groups = c("TSD",rep("RI",3), rep("TSD",3), "RI", "TSD", "TSD", "RI", "RI"),
        vsize=9,
        borders = T,
-       minimum = 0.001,
+       minimum = 0.1,
        fade = T )
 
 dev.off()
+
+###################################################
+#### Phylogenetic signal in m3 ####################
+post <- extract.samples(fit_m3)
+
+var_res_RI <- apply(post$res_v[,,1], 1 ,var)
+var_phy_RI <- apply(post$phy_v[,,1], 1 ,var)
+
+var_res_TSD <- apply(post$res_v[,,2], 1 ,var)
+var_phy_TSD <- apply(post$phy_v[,,2], 1 ,var)
+
+r2_phy_RI <- var_phy_RI / (var_phy_RI + var_res_RI)
+r2_phy_TSD <- var_phy_TSD / (var_phy_TSD + var_res_TSD)
+
+round(median(r2_phy_RI),2)
+round(HPDI(r2_phy_RI, prob=0.9),2)
+
+round(median(r2_phy_TSD),2)
+round(HPDI(r2_phy_TSD, prob=0.9),2)
+
