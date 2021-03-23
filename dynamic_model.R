@@ -500,9 +500,9 @@ axis(1, at=c(low_TSD, median_TSD, high_TSD), labels=(c(low_TSD, median_TSD,high_
 legend(x=-1.5, y=1, legend=(c("None","Autonomous local communities", "1 level", "2 levels","3 levels")), lwd=2, lty="solid", col=ordinal_cols, bty='n', cex=0.8)
 
 
-####### Political Integration #######
-plot(NULL, xlim=c(low_TSD, high_TSD), ylim=c(0,1), ylab="Pr (Political Integration)", xlab="TSD (z-score)", xaxt='n',xaxs="i", yaxs="i")
-mtext("Political Integration", cex=0.8)
+####### Social Stratification #######
+plot(NULL, xlim=c(low_TSD, high_TSD), ylim=c(0,1), ylab="Pr (Social Stratification)", xlab="TSD (z-score)", xaxt='n',xaxs="i", yaxs="i")
+mtext("Social Stratification)", cex=0.8)
 
 for (l in 1:K) {
   
