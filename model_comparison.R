@@ -11,7 +11,7 @@ library(rethinking)
 d <- read.csv("data_analysis.csv", stringsAsFactors = F)
 sccs_tree <- ape::read.tree("SCCS_supertree.tre")
 
-setdiff(sccs_tree$tip.label, d$socname) # checking for discrepancies between phylo tree names and dataframe names, should return "character(0)" if all is well
+sum(d$socname == sccs_tree$tip.label)/length(d$socname) # checking for discrepancies between phylo tree names and dataframe names, should return 1 if all match
 
 #### Data dictionary ####
 ## socname: society name
