@@ -6,7 +6,26 @@ d <- read.csv("data-raw/SCCS-var1-2000.csv", stringsAsFactors = F) # reading in 
 d <- d[-187,] # dropping extraneous row
 
 # Selecting study variables from SCCS codebook
-d <- d[,c("socname", "v149", "v150", "v151", "v152", "v153", "v154", "v155", "v156", "v157", "v158", "v204", "v20", "v820", "v179", "v181", "v200", "v201")]
+d <- d[,c("sccs.","socname", "v149", "v150", "v151", "v152", "v153", "v154", "v155", "v156", "v157", "v158", "v204", "v20", "v820", "v200", "v201")]
+
+##### Bring in location data from DPLACE ################
+d_loc <- read.csv("data-raw/location.csv", stringsAsFactors = F)
+
+d_loc <- d_loc %>%
+  filter(Source == "Standard cross-cultural sample") %>%
+  select(Society.id, Revised.latitude, Revised.longitude) %>% 
+  mutate(sccsn = substr(Society.id, 5, nchar(Society.id))) %>%
+  mutate(sccsn = as.numeric(sccsn)) %>%
+  select(-Society.id)
+
+d <- left_join(d, d_loc, by=c("sccs." = "sccsn"))
+names(d)[1] <- "id"
+
+# Manually adding lat/lon for one society where data missing from DPLACE
+d$Revised.latitude[d$socname == "Iban"] <- 2
+d$Revised.longitude[d$socname == "Iban"] <- 110
+
+
 
 sccs_tree <- read.nexus("data-raw/sccs_supertree.nex")
 setdiff(sccs_tree$tip.label, d$socname) # checking for discrepancies between phylo tree names and dataframe names

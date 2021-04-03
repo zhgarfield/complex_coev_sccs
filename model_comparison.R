@@ -14,6 +14,7 @@ sccs_tree <- ape::read.tree("SCCS_supertree.tre")
 setdiff(sccs_tree$tip.label, d$socname) # checking for discrepancies between phylo tree names and dataframe names, should return "character(0)" if all is well
 
 #### Data dictionary ####
+## id: sccs id number
 ## socname: society name
 ## v149: Writing and Records
 ## v150: Fixity of Residence

@@ -7,6 +7,7 @@ library(colorspace)
 library(viridis)
 library(phaseR)
 library(deSolve)
+library(geosphere)
 
 # Read in data
 d <- read.csv("data_analysis.csv", stringsAsFactors = F)
@@ -37,7 +38,11 @@ parent_time <- rep(NA, length(node_seq))
 parent_time[1] <- -99
 for (i in 2:length(parent_time)) parent_time[i] <- (node.depth.edgelength(tree)[node_seq[i]] - node.depth.edgelength(tree)[parent[i]]) / max(node.depth.edgelength(tree))
 
-N_seg <- length(node_seq)  # total num segments in the tree\
+N_seg <- length(node_seq)  # total num segments in the tree
+
+### Construct geographic distance matrix
+geo_dist <- geosphere::distm( cbind(d$Revised.longitude, d$Revised.latitude) )
+geo_dist <- geo_dist / max(geo_dist)
 
 #######################
 #### Organizing data ##
@@ -69,12 +74,13 @@ data_list <- list(
   hunting = hunting_rev,
   storage = storage,
   K = max(d$v151),
-  K_hunt = K_hunt
+  K_hunt = K_hunt,
+  geo_dist = geo_dist
 )
 
-mod <- stan_model("stan_models/mcoev_SDE.stan")
+mod <- stan_model("stan_models/mcoev_SDE_geo.stan")
 
-fit <- sampling(mod, data=data_list, iter=2000, init="0", chains=10, cores=10)
+fit <- sampling(mod, data=data_list, iter=400, init="0", chains=10, cores=10)
 
 #saveRDS(fit, "fit_mcoev.rds")
 #fit <- readRDS("fit_mcoev.rds")
