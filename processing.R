@@ -3,7 +3,7 @@ library(phytools)
 
 ######################################
 d <- read.csv("data-raw/SCCS-var1-2000.csv", stringsAsFactors = F) # reading in SCCS dataset, should just give reduced data for publication
-d <- d[-187,] # dropping extraneous row
+#d <- d[-187,] # dropping extraneous row
 
 # Selecting study variables from SCCS codebook
 d <- d[,c("sccs.","socname", "v149", "v150", "v151", "v152", "v153", "v154", "v155", "v156", "v157", "v158", "v204", "v20", "v820", "v200", "v201")]
