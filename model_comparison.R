@@ -73,26 +73,26 @@ n_chains <- 10 # how many markov chains
 
 ######################################################
 #### Saturated Model (mS) ############################
-#fit_mS <- stan( file="stan_models/mS.stan", data=data_list, iter=n_iter, chains=n_chains, cores=n_chains, init="0", control=list(adapt_delta=0.9) )
-#saveRDS(fit_mS, "fit_mS.rds")
+fit_mS <- stan( file="stan_models/mS.stan", data=data_list, iter=n_iter, chains=n_chains, cores=n_chains, init="0", control=list(adapt_delta=0.9) )
+saveRDS(fit_mS, "fit_mS.rds")
 
 #### Model Zero ########################################
-#fit_m0 <- stan( file="stan_models/m0.stan", data=data_list, iter=n_iter, chains=n_chains, cores=n_chains, init="0", control=list(adapt_delta=0.9) )
-#saveRDS(fit_m0, "fit_m0.rds")
+fit_m0 <- stan( file="stan_models/m0.stan", data=data_list, iter=n_iter, chains=n_chains, cores=n_chains, init="0", control=list(adapt_delta=0.9) )
+saveRDS(fit_m0, "fit_m0.rds")
 
 #######################################################
 #### Model One ########################################
-#fit_m1 <- stan( file="stan_models/m1.stan", data=data_list, iter=n_iter, chains=n_chains, cores=n_chains, init="0", control=list(adapt_delta=0.9) )
-#saveRDS(fit_m1, "fit_m1.rds")
+fit_m1 <- stan( file="stan_models/m1.stan", data=data_list, iter=n_iter, chains=n_chains, cores=n_chains, init="0", control=list(adapt_delta=0.9) )
+saveRDS(fit_m1, "fit_m1.rds")
 
 #### Model Two ########################################
-#fit_m2 <- stan( file="stan_models/m2.stan", data=data_list, iter=n_iter, chains=n_chains, cores=n_chains, init="0", control=list(adapt_delta=0.9) )
-#saveRDS(fit_m2, "fit_m2.rds")
+fit_m2 <- stan( file="stan_models/m2.stan", data=data_list, iter=n_iter, chains=n_chains, cores=n_chains, init="0", control=list(adapt_delta=0.9) )
+saveRDS(fit_m2, "fit_m2.rds")
 
 #######################################################
 #### Model Three ######################################
-#fit_m3 <- stan( file="stan_models/m3.stan", data=data_list, iter=n_iter, chains=n_chains, cores=n_chains, init="0", control=list(adapt_delta=0.9) )
-#saveRDS(fit_m3, "fit_m3.rds")
+fit_m3 <- stan( file="stan_models/m3.stan", data=data_list, iter=n_iter, chains=n_chains, cores=n_chains, init="0", control=list(adapt_delta=0.9) )
+saveRDS(fit_m3, "fit_m3.rds")
 
 #### Model comparison with PSIS LOOCV #################
 
