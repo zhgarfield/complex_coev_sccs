@@ -3,8 +3,8 @@
 # NOTE: This script relies on "rstan" and convenience functions from the "rethinking" package. For installation instructions see https://github.com/rmcelreath/rethinking)
 if (!require("tidyverse")) install.packages("tidyverse")
 # if (!require("phytools")) install.packages("phytools")
-if (!require("qgraph")) install.packages("qgraph") # Correlation network plot
-if (!require("patchwork")) install.packages("patchwork") # Correlation network plot
+#if (!require("qgraph")) install.packages("qgraph") # Correlation network plot
+#if (!require("patchwork")) install.packages("patchwork") # Correlation network plot
 
 library(rstan)
 library(rethinking)
