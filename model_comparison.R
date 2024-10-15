@@ -5,7 +5,10 @@ if (!require("tidyverse")) install.packages("tidyverse")
 # if (!require("phytools")) install.packages("phytools")
 if (!require("qgraph")) install.packages("qgraph") # Correlation network plot
 if (!require("patchwork")) install.packages("patchwork") # Correlation network plot
+
+library(rstan)
 library(rethinking)
+library(tidyverse)
 
 # Read in data
 d <- read.csv("data_analysis.csv", stringsAsFactors = F)
@@ -38,6 +41,20 @@ d <- read.csv("data_analysis.csv", stringsAsFactors = F)
 #dist_mat <- dist_mat / max(dist_mat) # scaling matrix to [0,1]
 
 #### Organizing data ##
+storage <- ifelse(d$v20 > 1, 1, 0) # dichtomizing food storage
+storage <- ifelse(is.na(storage), -99, storage) # flagging missing storage observations
+hunting <- d$v204 + 1 # making the lowest value 1
+K_hunt <- max(hunting) # number of ordinal levels
+
+J <- 12 # number of variables
+K <- max(d$v149) # number of ordinal levels
+N <- nrow(d) # num observations
+
+# Reverse coding hunting to be high -> low
+hunting_rev <- as.factor(hunting)
+levels(hunting_rev) <- rev(levels(hunting_rev))
+hunting_rev <- as.numeric( as.character(hunting_rev) )
+
 # Organize data into list for stan, now adding a third factor for Community Size (CS)
 data_list <- list(
   y = cbind(d$v151, d$v150, d$v156, d$v152, d$v149, d$v153, d$v154, d$v155, d$v157, d$v158),  # all variables
@@ -51,10 +68,16 @@ data_list <- list(
 )
 
 # Fit stan model with three latent factors
-n_iter <- 500  # number of samples
+n_iter <- 1000  # number of samples
 n_chains <- 10  # number of chains
 
-fit_m3 <- stan(file = "stan_models/m3_three_factors.stan", data = data_list, iter = n_iter, chains = n_chains, cores = n_chains, init = 0, control = list(adapt_delta = 0.9))
+fit_m3 <- stan(file = "stan_models/m3_three_factors.stan", 
+               data = data_list, 
+               iter = n_iter, 
+               chains = n_chains, 
+               cores = n_chains, 
+               init = 0,  
+               control = list(adapt_delta = 0.99, max_treedepth = 15))
 saveRDS(fit_m3, "fit_m3_three_factors.rds")
 
 # Extract the samples
